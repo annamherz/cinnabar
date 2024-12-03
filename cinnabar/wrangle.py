@@ -94,16 +94,25 @@ class FEMap(object):
         for node in self.graph.nodes(data=True):
             name = self._id_to_name[node[0]]
             node[1]["name"] = name
-            node[1]["exp_DG"] = self.results["Experimental"][name].DG
-            node[1]["exp_dDG"] = self.results["Experimental"][name].dDG
+            try:
+                node[1]["exp_DG"] = self.results["Experimental"][name].DG
+                node[1]["exp_dDG"] = self.results["Experimental"][name].dDG
+            except:
+                # if no experimental data
+                node[1]["exp_DG"] = None
+                node[1]["exp_dDG"] = None
 
         for edge in self.graph.edges(data=True):
-            DG_A = self.graph.nodes[edge[0]]["exp_DG"]
-            DG_B = self.graph.nodes[edge[1]]["exp_DG"]
-            edge[2]["exp_DDG"] = DG_B - DG_A
-            dDG_A = self.graph.nodes[edge[0]]["exp_dDG"]
-            dDG_B = self.graph.nodes[edge[1]]["exp_dDG"]
-            edge[2]["exp_dDDG"] = (dDG_A**2 + dDG_B**2) ** 0.5
+            try:
+                DG_A = self.graph.nodes[edge[0]]["exp_DG"]
+                DG_B = self.graph.nodes[edge[1]]["exp_DG"]
+                edge[2]["exp_DDG"] = DG_B - DG_A
+                dDG_A = self.graph.nodes[edge[0]]["exp_dDG"]
+                dDG_B = self.graph.nodes[edge[1]]["exp_dDG"]
+                edge[2]["exp_dDDG"] = (dDG_A**2 + dDG_B**2) ** 0.5
+            except:
+                edge[2]["exp_DDG"] = None
+                edge[2]["exp_dDDG"] = None
 
         self.n_ligands = self.graph.number_of_nodes()
         self.n_edges = self.graph.number_of_edges()
@@ -114,7 +123,8 @@ class FEMap(object):
         if not self.weakly_connected:
             print("Graph is not connected enough to compute absolute values")
         else:
-            self.generate_absolute_values()
+            pass
+        self.generate_absolute_values()
 
     def check_weakly_connected(self):
         undirected_graph = self.graph.to_undirected()
@@ -123,12 +133,12 @@ class FEMap(object):
 
     def generate_absolute_values(self):
         # TODO this could work if either relative or absolute expt values are provided
-        if self.weakly_connected:
-            f_i_calc, C_calc = stats.mle(self.graph, factor="calc_DDG")
-            variance = np.diagonal(C_calc)
-            for i, (f_i, df_i) in enumerate(zip(f_i_calc, variance**0.5)):
-                self.graph.nodes[i]["calc_DG"] = f_i
-                self.graph.nodes[i]["calc_dDG"] = df_i
+        # if self.weakly_connected:
+        f_i_calc, C_calc = stats.mle(self.graph, factor="calc_DDG", node_factor=None)
+        variance = np.diagonal(C_calc)
+        for i, (f_i, df_i) in enumerate(zip(f_i_calc, variance**0.5)):
+            self.graph.nodes[i]["calc_DG"] = f_i
+            self.graph.nodes[i]["calc_dDG"] = df_i
 
     def draw_graph(self, title: str = "", filename: Union[str, None] = None):
         plt.figure(figsize=(10, 10))
